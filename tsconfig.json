@@ -1,0 +1,22 @@
+// Source - https://stackoverflow.com/q/70733886
+// Posted by jakey_dev
+// Retrieved 2026-07-31, License - CC BY-SA 4.0
+
+//tsconfig.json
+{
+    "compilerOptions": {
+        "baseUrl": "src/",
+        "target": "es5",
+        "lib": ["dom", "dom.iterable", "esnext"],
+        "allowJs": true,
+        "skipLibCheck": true,
+        "strict": true,
+        "forceConsistentCasingInFileNames": true,
+        "esModuleInterop": true,
+        "module": "commonjs",
+        "moduleResolution": "node",
+        "outDir": "build"
+    },
+    "include": ["**/*.ts"],
+    "exclude": ["node_modules"]
+}
