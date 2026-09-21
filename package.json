@@ -4,17 +4,22 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:watch": "vitest --watch"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@testcontainers/postgresql": "^12.1.0",
+    "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/ejs": "^3.1.5",
     "@types/express": "^5.0.6",
     "@types/helmet": "^0.0.48",
     "@types/node": "^26.1.2",
+    "@types/supertest": "^7.2.1",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "ejs": "^6.0.1",
@@ -22,10 +27,15 @@
     "express-validator": "^7.3.2",
     "helmet": "^8.3.0",
     "prisma": "^6.19.0",
-    "typescript": "^7.0.2"
+    "supertest": "^7.2.2",
+    "testcontainers": "^12.1.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.1"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
-    "ioredis": "^6.0.0"
+    "cookie-parser": "^1.4.7",
+    "ioredis": "^6.0.0",
+    "zod": "^4.6.5"
   }
 }
