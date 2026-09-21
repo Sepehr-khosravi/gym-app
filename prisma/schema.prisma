@@ -1,0 +1,477 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum RoleName {
+  SUPER_ADMIN
+  ADMIN
+  RECEPTIONIST
+  ACCOUNTANT
+  COACH
+  MEMBER
+}
+
+enum MembershipStatus {
+  ACTIVE
+  EXPIRED
+  SUSPENDED
+  CANCELLED
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
+  EXPIRED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  ZIBAL
+  CASH
+  POS
+  CARD_TO_CARD
+  OTHER
+}
+
+enum CredentialType {
+  RFID
+  NFC
+  QR
+  OTHER
+}
+
+enum CredentialStatus {
+  ACTIVE
+  REVOKED
+  LOST
+}
+
+enum AccessResult {
+  ALLOWED
+  DENIED
+}
+
+enum ScheduleStatus {
+  OPEN
+  CLOSED
+}
+
+enum DayOfWeek {
+  SATURDAY
+  SUNDAY
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+}
+
+// ─────────────────────────────────────────────
+// CLUB
+// ─────────────────────────────────────────────
+
+model Club {
+  id          String   @id @default(cuid())
+
+  name        String
+  phone       String?
+  address     String?
+
+  timezone    String   @default("Asia/Tehran")
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users               User[]
+  membershipPlans     MembershipPlan[]
+  openingHours        OpeningHour[]
+  scheduleExceptions  ScheduleException[]
+  accessCredentials   AccessCredential[]
+  accessLogs          AccessLog[]
+
+  @@index([name])
+}
+
+// ─────────────────────────────────────────────
+// USERS
+// ─────────────────────────────────────────────
+
+model User {
+  id            String     @id @default(cuid())
+
+  clubId        String
+
+  firstName     String
+  lastName      String
+
+  phone         String     @unique
+  nationalId    String     @unique
+  birthDate     DateTime
+
+  email         String?
+
+  status        UserStatus @default(ACTIVE)
+
+  passwordHash  String?
+
+  lastLoginAt   DateTime?
+
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  club          Club       @relation(fields: [clubId], references: [id])
+
+  roles         UserRole[]
+
+  memberships   Membership[]
+
+  orders        Order[]
+  invoices      Invoice[]
+  payments      Payment[]
+
+  credentials   AccessCredential[]
+
+  sessions      Session[]
+
+  @@index([clubId])
+  @@index([clubId, status])
+  @@index([lastName, firstName])
+}
+
+// ─────────────────────────────────────────────
+// RBAC
+// ─────────────────────────────────────────────
+
+model Role {
+  id          String     @id @default(cuid())
+
+  name        RoleName   @unique
+  description String?
+
+  createdAt   DateTime   @default(now())
+
+  users       UserRole[]
+}
+
+model UserRole {
+  userId      String
+  roleId      String
+
+  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  assignedAt  DateTime @default(now())
+
+  @@id([userId, roleId])
+  @@index([roleId])
+}
+
+// ─────────────────────────────────────────────
+// MEMBERSHIP PLANS
+// ─────────────────────────────────────────────
+
+model MembershipPlan {
+  id             String   @id @default(cuid())
+
+  clubId         String
+
+  name           String
+  description    String?
+
+  durationDays   Int
+
+  price          Decimal  @db.Decimal(15, 0)
+
+  isActive       Boolean  @default(true)
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  club           Club       @relation(fields: [clubId], references: [id])
+
+  memberships    Membership[]
+  orders         Order[]
+
+  @@index([clubId])
+  @@index([clubId, isActive])
+}
+
+// ─────────────────────────────────────────────
+// MEMBERSHIPS
+// ─────────────────────────────────────────────
+
+model Membership {
+  id          String            @id @default(cuid())
+
+  userId      String
+  planId      String
+
+  startsAt    DateTime
+  expiresAt   DateTime
+
+  status      MembershipStatus  @default(ACTIVE)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User             @relation(fields: [userId], references: [id])
+  plan        MembershipPlan   @relation(fields: [planId], references: [id])
+
+  invoices    Invoice[]
+
+  @@index([userId])
+  @@index([planId])
+  @@index([expiresAt])
+  @@index([status, expiresAt])
+}
+
+// ─────────────────────────────────────────────
+// ORDERS
+// ─────────────────────────────────────────────
+
+model Order {
+  id              String       @id @default(cuid())
+
+  userId          String
+  planId          String
+
+  status          OrderStatus  @default(PENDING)
+
+  // Price snapshot at order creation
+  amount          Decimal      @db.Decimal(15, 0)
+
+  currency        String       @default("IRR")
+
+  paidAt          DateTime?
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  user            User         @relation(fields: [userId], references: [id])
+  plan            MembershipPlan @relation(fields: [planId], references: [id])
+
+  invoice         Invoice?
+  payments        Payment[]
+
+  @@index([userId])
+  @@index([planId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ─────────────────────────────────────────────
+// INVOICES
+// ─────────────────────────────────────────────
+
+model Invoice {
+  id             String        @id @default(cuid())
+
+  userId         String
+  orderId        String?       @unique
+  membershipId   String?
+
+  amount         Decimal       @db.Decimal(15, 0)
+
+  status         PaymentStatus @default(PENDING)
+
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  user           User          @relation(fields: [userId], references: [id])
+  order          Order?        @relation(fields: [orderId], references: [id])
+  membership     Membership?   @relation(fields: [membershipId], references: [id])
+
+  payments       Payment[]
+
+  @@index([userId])
+  @@index([membershipId])
+  @@index([status])
+}
+
+// ─────────────────────────────────────────────
+// PAYMENTS
+// ─────────────────────────────────────────────
+
+model Payment {
+  id              String        @id @default(cuid())
+
+  userId          String
+  orderId         String
+  invoiceId       String?
+
+  amount          Decimal       @db.Decimal(15, 0)
+
+  method          PaymentMethod
+  status          PaymentStatus @default(PENDING)
+
+  // Payment gateway information
+  gateway         String?
+  authority       String?
+  transactionId   String?
+
+  paidAt          DateTime?
+
+  metadata        Json?
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  user            User          @relation(fields: [userId], references: [id])
+  order           Order         @relation(fields: [orderId], references: [id])
+  invoice         Invoice?      @relation(fields: [invoiceId], references: [id])
+
+  @@index([userId])
+  @@index([orderId])
+  @@index([invoiceId])
+  @@index([authority])
+  @@index([transactionId])
+  @@index([status, createdAt])
+}
+
+// ─────────────────────────────────────────────
+// ACCESS CREDENTIALS
+// ─────────────────────────────────────────────
+
+model AccessCredential {
+  id            String             @id @default(cuid())
+
+  clubId        String
+  userId        String
+
+  type          CredentialType
+  identifier    String
+
+  status        CredentialStatus   @default(ACTIVE)
+
+  issuedAt      DateTime           @default(now())
+  revokedAt     DateTime?
+
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  club          Club               @relation(fields: [clubId], references: [id])
+  user          User               @relation(fields: [userId], references: [id])
+
+  accessLogs    AccessLog[]
+
+  @@unique([type, identifier])
+  @@index([clubId])
+  @@index([userId])
+  @@index([status])
+}
+
+// ─────────────────────────────────────────────
+// ACCESS LOG
+// ─────────────────────────────────────────────
+
+model AccessLog {
+  id             String        @id @default(cuid())
+
+  clubId         String
+  credentialId   String
+
+  userId         String?
+
+  result         AccessResult
+  reason         String?
+
+  createdAt      DateTime      @default(now())
+
+  club           Club              @relation(fields: [clubId], references: [id])
+  credential     AccessCredential  @relation(fields: [credentialId], references: [id])
+
+  @@index([clubId, createdAt])
+  @@index([credentialId, createdAt])
+  @@index([userId, createdAt])
+  @@index([result, createdAt])
+}
+
+// ─────────────────────────────────────────────
+// SCHEDULE
+// ─────────────────────────────────────────────
+
+model OpeningHour {
+  id          String     @id @default(cuid())
+
+  clubId      String
+  dayOfWeek   DayOfWeek
+
+  status      ScheduleStatus @default(OPEN)
+
+  openTime    String?
+  closeTime   String?
+
+  club        Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@unique([clubId, dayOfWeek])
+  @@index([clubId])
+}
+
+model ScheduleException {
+  id          String         @id @default(cuid())
+
+  clubId      String
+
+  date        DateTime
+
+  status      ScheduleStatus
+
+  openTime    String?
+  closeTime   String?
+
+  reason      String?
+
+  club        Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+
+  @@unique([clubId, date])
+  @@index([clubId, date])
+}
+
+// ─────────────────────────────────────────────
+// SESSIONS
+// ─────────────────────────────────────────────
+
+model Session {
+  id          String   @id @default(cuid())
+
+  userId      String
+
+  tokenHash   String   @unique
+
+  expiresAt   DateTime
+
+  createdAt   DateTime @default(now())
+  revokedAt   DateTime?
+
+  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
