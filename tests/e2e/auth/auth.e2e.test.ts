@@ -12,6 +12,8 @@ import { createApp } from "../../../src/app";
 import { testPrisma } from "../../setup/prisma";
 import { TestOtpProvider } from "../../mocks/test-otp.provider";
 import { clearRedis } from "../../setup/redis";
+import { redis } from "../../../src/config/redis";
+
 
 describe("Auth E2E", () => {
   let otpProvider: TestOtpProvider;
@@ -19,6 +21,17 @@ describe("Auth E2E", () => {
 
   beforeAll(async () => {
     await testPrisma.$connect();
+
+    await testPrisma.club.upsert({
+      where: {
+        id: process.env.CLUB_ID!,
+      },
+      update: {},
+      create: {
+        id: process.env.CLUB_ID!,
+        name: "Test Club",
+      },
+    });
 
     otpProvider = new TestOtpProvider();
 
@@ -167,6 +180,10 @@ describe("Auth E2E", () => {
     expect(
       firstResponse.status,
     ).toBe(200);
+
+    await redis.del(
+      "otp:cooldown:09120000000",
+    );
 
     await request(app)
       .post(

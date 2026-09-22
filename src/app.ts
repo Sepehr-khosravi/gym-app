@@ -52,14 +52,42 @@ export function createApp(
     router(container),
   );
 
-  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-    console.error(err);
+  app.use(
+    (
+      err: any,
+      req: express.Request,
+      res: express.Response,
+      next: express.NextFunction,
+    ) => {
+      console.error(err);
   
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
-  });
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Internal server error";
+  
+      let status = 500;
+  
+      if (
+        message === "Unauthorized"
+      ) {
+        status = 401;
+      } else if (
+        message === "Invalid OTP" ||
+        message === "OTP has expired or does not exist" ||
+        message === "Too many invalid OTP attempts" ||
+        message ===
+          "Profile information is required for registration"
+      ) {
+        status = 400;
+      }
+  
+      return res.status(status).json({
+        success: false,
+        message,
+      });
+    },
+  );
 
 
   return app;
