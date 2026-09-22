@@ -20,6 +20,17 @@ describe("Auth security", () => {
   beforeAll(async () => {
     await testPrisma.$connect();
 
+    await testPrisma.club.upsert({
+      where: {
+        id: process.env.CLUB_ID!,
+      },
+      update: {},
+      create: {
+        id: process.env.CLUB_ID!,
+        name: "Test Club",
+      },
+    });
+
     otpProvider = new TestOtpProvider();
 
     app = createApp(
@@ -28,14 +39,13 @@ describe("Auth security", () => {
     );
   });
 
-
   beforeEach(async () => {
     await testPrisma.session.deleteMany();
     await testPrisma.userRole.deleteMany();
     await testPrisma.user.deleteMany();
-  
+
     await clearRedis();
-  
+
     otpProvider.clear();
   });
 
