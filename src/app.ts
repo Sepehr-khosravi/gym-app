@@ -2,7 +2,8 @@ import express from "express";
 import helmet from "helmet";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-
+//config 
+import config from "config/config";
 import { PrismaClient } from "@prisma/client";
 
 import router from "./api/v1";
@@ -12,6 +13,8 @@ import { ConsoleOtpProvider } from "./services/otp/providers/console-otp.provide
 
 import { prisma } from "./config/database";
 import { createContainer } from "./container";
+//documents
+import { setupSwagger } from "../docs/swagger";
 
 export function createApp(
   prisma: PrismaClient,
@@ -19,11 +22,13 @@ export function createApp(
 ) {
   const app = express();
 
+  setupSwagger(app);
+
   app.use(express.json());
 
   app.use(
     helmet({
-      xssFilter: true,
+      xssFilter: config.nodeEnv == "development" ? false : true,
     }),
   );
 
@@ -99,3 +104,4 @@ const app = createApp(
 );
 
 export default app;
+
