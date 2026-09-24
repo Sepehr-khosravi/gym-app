@@ -3,6 +3,7 @@ import type {
   Request,
   Response,
 } from "express";
+import { prisma } from "../../config/database"
 
 import { AuthRepository } from "../../api/v1/auth/auth.repository";
 
@@ -13,7 +14,7 @@ import {
 const SESSION_COOKIE_NAME = "session";
 
 const authRepository =
-  new AuthRepository();
+  new AuthRepository(prisma);
 
 export interface AuthenticatedRequest
   extends Request {

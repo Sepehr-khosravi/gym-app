@@ -3,7 +3,7 @@ import helmet from "helmet";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 //config 
-import config from "config/config";
+import config from "./config/config";
 import { PrismaClient } from "@prisma/client";
 
 import router from "./api/v1";
