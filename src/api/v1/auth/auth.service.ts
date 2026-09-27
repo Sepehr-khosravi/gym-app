@@ -6,7 +6,6 @@ import {
 import type { Response } from "express";
 
 import { AuthRepository } from "./auth.repository";
-
 import {
   sendOtpSchema,
   verifyOtpSchema,
@@ -19,25 +18,63 @@ const SESSION_TTL_SECONDS =
 
 const SESSION_COOKIE_NAME = "session";
 
-const CLUB_ID = process.env.CLUB_ID;
-
-if (!CLUB_ID) {
-  throw new Error("CLUB_ID is not configured");
-}
-
 export class AuthService {
   constructor(
     private readonly authRepository: AuthRepository,
     private readonly otpService: OtpService,
   ) {}
 
+  /**
+   * Check whether a user exists and is verified.
+   *
+   * Authentication is only available for
+   * verified users.
+   */
+  async checkUserVerificationStatus(
+    phone: string,
+  ) {
+    const user =
+      await this.authRepository.findUserByPhone(
+        phone,
+      );
+
+    if (!user) {
+      return false;
+    }
+
+    return user.isVerified;
+  }
+
+  /**
+   * Send OTP to an existing verified user.
+   *
+   * New users must complete registration
+   * and payment before they can authenticate.
+   */
   async sendOtp(input: unknown) {
     const { phone } =
       sendOtpSchema.parse(input);
 
+    const isVerified =
+      await this.checkUserVerificationStatus(
+        phone,
+      );
+
+    if (!isVerified) {
+      throw new Error(
+        "User is not verified",
+      );
+    }
+
     return this.otpService.send(phone);
   }
 
+  /**
+   * Verify OTP and create a session.
+   *
+   * This method does NOT create users.
+   * Users must already exist and be verified.
+   */
   async verifyOtp(
     input: unknown,
     res: Response,
@@ -50,32 +87,27 @@ export class AuthService {
       data.code,
     );
 
-    let user =
+    const user =
       await this.authRepository.findUserByPhone(
         data.phone,
       );
 
     if (!user) {
-      if (
-        !data.firstName ||
-        !data.lastName ||
-        !data.nationalId ||
-        !data.birthDate 
-      ) {
-        throw new Error(
-          "Profile information is required for registration",
-        );
-      }
+      throw new Error(
+        "User not found",
+      );
+    }
 
-      user =
-        await this.authRepository.createUser({
-          clubId: CLUB_ID ? CLUB_ID : "",
-          phone: data.phone,
-          firstName: data.firstName,
-          lastName: data.lastName,
-          nationalId: data.nationalId,
-          birthDate: data.birthDate,
-        });
+    if (!user.isVerified) {
+      throw new Error(
+        "User is not verified",
+      );
+    }
+
+    if (user.status !== "ACTIVE") {
+      throw new Error(
+        "User is not active",
+      );
     }
 
     const sessionToken =
@@ -100,11 +132,15 @@ export class AuthService {
       sessionToken,
       {
         httpOnly: true,
+
         secure:
           process.env.NODE_ENV ===
           "production",
+
         sameSite: "lax",
+
         expires: expiresAt,
+
         path: "/",
       },
     );
@@ -115,6 +151,9 @@ export class AuthService {
     };
   }
 
+  /**
+   * Revoke the current session.
+   */
   async logout(
     sessionToken: string | undefined,
     res: Response,
@@ -132,20 +171,28 @@ export class AuthService {
       SESSION_COOKIE_NAME,
       {
         httpOnly: true,
+
         secure:
           process.env.NODE_ENV ===
           "production",
+
         sameSite: "lax",
+
         path: "/",
       },
     );
   }
 
+  /**
+   * Return the currently authenticated user.
+   */
   async getCurrentUser(
     sessionToken: string | undefined,
   ) {
     if (!sessionToken) {
-      throw new Error("Unauthorized");
+      throw new Error(
+        "Unauthorized",
+      );
     }
 
     const tokenHash =
@@ -157,7 +204,9 @@ export class AuthService {
       );
 
     if (!session) {
-      throw new Error("Unauthorized");
+      throw new Error(
+        "Unauthorized",
+      );
     }
 
     return this.serializeUser(
@@ -165,7 +214,9 @@ export class AuthService {
     );
   }
 
-  private serializeUser(user: any) {
+  private serializeUser(
+    user: any,
+  ) {
     return {
       id: user.id,
       phone: user.phone,
@@ -180,7 +231,9 @@ export class AuthService {
     };
   }
 
-  private hashToken(token: string) {
+  private hashToken(
+    token: string,
+  ) {
     return createHash("sha256")
       .update(token)
       .digest("hex");

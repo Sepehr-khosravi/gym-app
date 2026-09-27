@@ -35,9 +35,10 @@ export class ZarinpalGateway
   private readonly baseUrl: string;
 
   constructor() {
-    this.baseUrl = config.payment.zarinpal.sandbox
-      ? "https://sandbox.zarinpal.com"
-      : "https://payment.zarinpal.com";
+    this.baseUrl =
+      config.payment.zarinpal.sandbox
+        ? "https://sandbox.zarinpal.com"
+        : "https://payment.zarinpal.com";
   }
 
   async createPayment(
@@ -58,7 +59,8 @@ export class ZarinpalGateway
 
           callback_url: input.callbackUrl,
 
-          description: `Payment ${input.paymentId}`,
+          description:
+            `Payment ${input.paymentId}`,
         }),
       },
     );
@@ -73,7 +75,8 @@ export class ZarinpalGateway
       (await response.json()) as ZarinpalRequestResponse;
 
     const code = result.data?.code;
-    const authority = result.data?.authority;
+    const authority =
+      result.data?.authority;
 
     if (code !== 100 || !authority) {
       throw new Error(
@@ -129,14 +132,22 @@ export class ZarinpalGateway
       };
     }
 
+    if (!result.data?.ref_id) {
+      throw new Error(
+        "ZarinPal verification succeeded but ref_id is missing",
+      );
+    }
+
     return {
       success: true,
       transactionId:
-        result.data?.ref_id?.toString(),
+        result.data.ref_id.toString(),
     };
   }
 
-  getCallbackUrl(paymentId: string): string {
+  getCallbackUrl(
+    paymentId: string,
+  ): string {
     const base =
       config.payment.zarinpal.callbackUrl;
 

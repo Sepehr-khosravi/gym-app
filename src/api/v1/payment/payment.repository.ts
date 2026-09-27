@@ -24,7 +24,9 @@ export class PaymentRepository {
     });
   }
 
-  async findPendingByOrderId(orderId: string) {
+  async findPendingByOrderId(
+    orderId: string,
+  ) {
     return this.prisma.payment.findFirst({
       where: {
         orderId,
@@ -78,7 +80,9 @@ export class PaymentRepository {
     });
   }
 
-  async findByAuthority(authority: string) {
+  async findByAuthority(
+    authority: string,
+  ) {
     return this.prisma.payment.findFirst({
       where: {
         authority,
@@ -116,7 +120,9 @@ export class PaymentRepository {
     return result.count === 1;
   }
 
-  async markFailed(paymentId: string) {
+  async markFailed(
+    paymentId: string,
+  ) {
     const result =
       await this.prisma.payment.updateMany({
         where: {
@@ -131,7 +137,9 @@ export class PaymentRepository {
     return result.count === 1;
   }
 
-  async markCancelled(paymentId: string) {
+  async markCancelled(
+    paymentId: string,
+  ) {
     const result =
       await this.prisma.payment.updateMany({
         where: {
@@ -146,7 +154,9 @@ export class PaymentRepository {
     return result.count === 1;
   }
 
-  async markRefunded(paymentId: string) {
+  async markRefunded(
+    paymentId: string,
+  ) {
     const result =
       await this.prisma.payment.updateMany({
         where: {

@@ -24,7 +24,9 @@ interface ZibalVerifyResponse {
   refNumber?: string;
 }
 
-export class ZibalGateway implements PaymentGateway {
+export class ZibalGateway
+  implements PaymentGateway
+{
   private readonly baseUrl =
     "https://gateway.zibal.ir";
 
@@ -85,9 +87,7 @@ export class ZibalGateway implements PaymentGateway {
 
     return {
       paymentId: input.paymentId,
-
       authority: trackId,
-
       paymentUrl:
         `${this.baseUrl}/start/${trackId}`,
     };
@@ -129,10 +129,15 @@ export class ZibalGateway implements PaymentGateway {
       };
     }
 
+    if (!result.refNumber) {
+      throw new Error(
+        "Zibal verification succeeded but refNumber is missing",
+      );
+    }
+
     return {
       success: true,
-      transactionId:
-        result.refNumber,
+      transactionId: result.refNumber,
     };
   }
 
