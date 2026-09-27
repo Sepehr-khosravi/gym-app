@@ -5,8 +5,7 @@ import type { AuthController } from "./auth.controller";
 export function createAuthRouter(
   controller: AuthController,
 ) {
-  const router =
-    express.Router();
+  const router = express.Router();
 
   router.post(
     "/send-otp",

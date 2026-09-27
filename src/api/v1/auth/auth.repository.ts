@@ -1,4 +1,7 @@
-import { PrismaClient, RoleName } from "@prisma/client";
+import {
+  PrismaClient,
+  RoleName,
+} from "@prisma/client";
 
 import type {
   CreateSessionInput,
@@ -15,6 +18,7 @@ export class AuthRepository {
       where: {
         phone,
       },
+
       include: {
         roles: {
           include: {
@@ -25,15 +29,28 @@ export class AuthRepository {
     });
   }
 
-  async createUser(input: CreateUserInput) {
+  async createUser(
+    input: CreateUserInput,
+  ) {
     return this.prisma.user.create({
       data: {
         clubId: input.clubId,
+
         phone: input.phone,
+
         firstName: input.firstName,
         lastName: input.lastName,
         nationalId: input.nationalId,
         birthDate: input.birthDate,
+
+        // A newly registered user is not
+        // verified until the payment succeeds.
+        isVerified: false,
+
+        // RegistrationService will provide
+        // the temporary expiration time.
+        verificationExpiresAt:
+          input.verificationExpiresAt,
 
         roles: {
           create: {
@@ -56,7 +73,32 @@ export class AuthRepository {
     });
   }
 
-  async createSession(input: CreateSessionInput) {
+  async markUserAsVerified(
+    userId: string,
+  ) {
+    return this.prisma.user.update({
+      where: {
+        id: userId,
+      },
+
+      data: {
+        isVerified: true,
+        verificationExpiresAt: null,
+      },
+
+      include: {
+        roles: {
+          include: {
+            role: true,
+          },
+        },
+      },
+    });
+  }
+
+  async createSession(
+    input: CreateSessionInput,
+  ) {
     return this.prisma.session.create({
       data: {
         userId: input.userId,
@@ -66,16 +108,22 @@ export class AuthRepository {
     });
   }
 
-  async findValidSession(tokenHash: string) {
+  async findValidSession(
+    tokenHash: string,
+  ) {
     return this.prisma.session.findFirst({
       where: {
         tokenHash,
+
         revokedAt: null,
+
         expiresAt: {
           gt: new Date(),
         },
+
         user: {
           status: "ACTIVE",
+          isVerified: true,
         },
       },
 
@@ -93,7 +141,9 @@ export class AuthRepository {
     });
   }
 
-  async revokeSession(tokenHash: string) {
+  async revokeSession(
+    tokenHash: string,
+  ) {
     return this.prisma.session.updateMany({
       where: {
         tokenHash,
@@ -102,6 +152,18 @@ export class AuthRepository {
 
       data: {
         revokedAt: new Date(),
+      },
+    });
+  }
+
+  async deleteExpiredUnverifiedUsers() {
+    return this.prisma.user.deleteMany({
+      where: {
+        isVerified: false,
+
+        verificationExpiresAt: {
+          lt: new Date(),
+        },
       },
     });
   }

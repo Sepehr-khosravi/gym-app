@@ -1,4 +1,7 @@
-import type { Request, Response } from "express";
+import type {
+  Request,
+  Response,
+} from "express";
 
 import {
   createPaymentSchema,
@@ -16,15 +19,17 @@ export class PaymentController {
     req: Request,
     res: Response,
   ) {
-    const input = createPaymentSchema.parse(
-      req.body,
-    );
+    const input =
+      createPaymentSchema.parse(
+        req.body,
+      );
 
-    const userId = (req as Request & {
-      user: {
-        id: string;
-      };
-    }).user.id;
+    const userId =
+      (req as Request & {
+        user: {
+          id: string;
+        };
+      }).user.id;
 
     const result =
       await this.paymentService.createPayment(
@@ -42,9 +47,10 @@ export class PaymentController {
     req: Request,
     res: Response,
   ) {
-    const input = verifyPaymentSchema.parse(
-      req.body,
-    );
+    const input =
+      verifyPaymentSchema.parse(
+        req.body,
+      );
 
     const result =
       await this.paymentService.verifyPayment(
@@ -69,7 +75,8 @@ export class PaymentController {
     if (!paymentId) {
       return res.status(400).json({
         success: false,
-        message: "Payment ID is required",
+        message:
+          "Payment ID is required",
       });
     }
 
@@ -96,7 +103,8 @@ export class PaymentController {
     if (!paymentId) {
       return res.status(400).json({
         success: false,
-        message: "Payment ID is required",
+        message:
+          "Payment ID is required",
       });
     }
 

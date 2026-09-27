@@ -66,6 +66,8 @@ const swaggerDocument = {
             type: "string",
             pattern: "^09\\d{9}$",
             example: "09120000000",
+            description:
+              "Iranian mobile phone number",
           },
 
           code: {
@@ -74,40 +76,6 @@ const swaggerDocument = {
             example: "123456",
             description:
               "6-digit OTP code",
-          },
-
-          firstName: {
-            type: "string",
-            minLength: 2,
-            maxLength: 50,
-            example: "Ali",
-            description:
-              "Required when registering a new user.",
-          },
-
-          lastName: {
-            type: "string",
-            minLength: 2,
-            maxLength: 50,
-            example: "Ahmadi",
-            description:
-              "Required when registering a new user.",
-          },
-
-          nationalId: {
-            type: "string",
-            pattern: "^\\d{10}$",
-            example: "0012345678",
-            description:
-              "Required when registering a new user.",
-          },
-
-          birthDate: {
-            type: "string",
-            format: "date",
-            example: "2008-01-01",
-            description:
-              "Required when registering a new user.",
           },
         },
       },
@@ -133,6 +101,13 @@ const swaggerDocument = {
           lastName: {
             type: "string",
             example: "Ahmadi",
+          },
+
+          isVerified: {
+            type: "boolean",
+            example: true,
+            description:
+              "Indicates whether the user's registration has been successfully verified.",
           },
 
           status: {
@@ -167,13 +142,19 @@ const swaggerDocument = {
 
       PaymentGateway: {
         type: "string",
-        enum: ["ZARINPAL", "ZIBAL"],
+        enum: [
+          "ZARINPAL",
+          "ZIBAL",
+        ],
         example: "ZARINPAL",
       },
 
       CreatePaymentRequest: {
         type: "object",
-        required: ["orderId", "gateway"],
+        required: [
+          "orderId",
+          "gateway",
+        ],
         properties: {
           orderId: {
             type: "string",
@@ -183,7 +164,8 @@ const swaggerDocument = {
           },
 
           gateway: {
-            $ref: "#/components/schemas/PaymentGateway",
+            $ref:
+              "#/components/schemas/PaymentGateway",
           },
         },
       },
@@ -270,7 +252,7 @@ const swaggerDocument = {
         tags: ["Auth"],
         summary: "Send OTP",
         description:
-          "Sends a one-time password to the specified phone number.",
+          "Sends a one-time password to the specified phone number. The phone number must belong to an existing verified user.",
 
         requestBody: {
           required: true,
@@ -304,7 +286,7 @@ const swaggerDocument = {
 
           "500": {
             description:
-              "Internal server error / validation error / OTP cooldown",
+              "Internal server error, validation error, or OTP error",
             content: {
               "application/json": {
                 schema: {
@@ -323,7 +305,7 @@ const swaggerDocument = {
         tags: ["Auth"],
         summary: "Verify OTP",
         description:
-          "Verifies an OTP. If the phone number does not belong to an existing user, profile information is required and a new user is registered.",
+          "Verifies the OTP for an existing verified user and creates an authenticated session.",
 
         requestBody: {
           required: true,
@@ -334,28 +316,9 @@ const swaggerDocument = {
                   "#/components/schemas/VerifyOtpRequest",
               },
 
-              examples: {
-                login: {
-                  summary:
-                    "Existing user login",
-                  value: {
-                    phone: "09120000000",
-                    code: "123456",
-                  },
-                },
-
-                register: {
-                  summary:
-                    "New user registration",
-                  value: {
-                    phone: "09120000000",
-                    code: "123456",
-                    firstName: "Ali",
-                    lastName: "Ahmadi",
-                    nationalId: "0012345678",
-                    birthDate: "2008-01-01",
-                  },
-                },
+              example: {
+                phone: "09120000000",
+                code: "123456",
               },
             },
           },
@@ -382,6 +345,7 @@ const swaggerDocument = {
                   success: true,
                   message:
                     "Authentication successful",
+
                   data: {
                     user: {
                       id: "f414bcc2-db58-454f-a579-d86d308112b5",
@@ -391,6 +355,7 @@ const swaggerDocument = {
                       status: "ACTIVE",
                       roles: ["MEMBER"],
                     },
+
                     expiresAt:
                       "2026-10-22T10:00:00.000Z",
                   },
@@ -401,7 +366,7 @@ const swaggerDocument = {
 
           "400": {
             description:
-              "Invalid OTP or missing registration profile",
+              "Invalid OTP or invalid request",
             content: {
               "application/json": {
                 schema: {
@@ -409,22 +374,10 @@ const swaggerDocument = {
                     "#/components/schemas/ErrorResponse",
                 },
 
-                examples: {
-                  invalidOtp: {
-                    value: {
-                      success: false,
-                      message:
-                        "Invalid OTP",
-                    },
-                  },
-
-                  missingProfile: {
-                    value: {
-                      success: false,
-                      message:
-                        "Profile information is required for registration",
-                    },
-                  },
+                example: {
+                  success: false,
+                  message:
+                    "Invalid OTP",
                 },
               },
             },
@@ -432,7 +385,7 @@ const swaggerDocument = {
 
           "500": {
             description:
-              "Internal server error / schema validation error",
+              "Internal server error or schema validation error",
             content: {
               "application/json": {
                 schema: {
@@ -451,7 +404,7 @@ const swaggerDocument = {
         tags: ["Auth"],
         summary: "Get current user",
         description:
-          "Returns the currently authenticated user using the session cookie.",
+          "Returns the currently authenticated and verified user using the session cookie.",
 
         security: [
           {
@@ -467,6 +420,7 @@ const swaggerDocument = {
               "application/json": {
                 example: {
                   success: true,
+
                   data: {
                     id: "f414bcc2-db58-454f-a579-d86d308112b5",
                     phone: "09120000000",
@@ -481,7 +435,8 @@ const swaggerDocument = {
           },
 
           "401": {
-            description: "Unauthorized",
+            description:
+              "Unauthorized",
             content: {
               "application/json": {
                 example: {
@@ -513,6 +468,7 @@ const swaggerDocument = {
           "200": {
             description:
               "Logged out successfully",
+
             content: {
               "application/json": {
                 example: {
@@ -532,7 +488,7 @@ const swaggerDocument = {
         tags: ["Payment"],
         summary: "Create payment",
         description:
-          "Creates a pending payment for an existing order and returns the payment gateway URL. The payment amount is taken from the order stored in the database and cannot be provided by the client.",
+          "Creates a pending payment for an existing payable order and returns the payment gateway URL. The payment amount is taken from the order stored in the database and cannot be provided by the client.",
 
         security: [
           {
@@ -553,20 +509,24 @@ const swaggerDocument = {
                 zarinpal: {
                   summary:
                     "Create ZarinPal payment",
+
                   value: {
                     orderId:
                       "cmabc123xyz",
-                    gateway: "ZARINPAL",
+                    gateway:
+                      "ZARINPAL",
                   },
                 },
 
                 zibal: {
                   summary:
                     "Create Zibal payment",
+
                   value: {
                     orderId:
                       "cmabc123xyz",
-                    gateway: "ZIBAL",
+                    gateway:
+                      "ZIBAL",
                   },
                 },
               },
@@ -578,6 +538,7 @@ const swaggerDocument = {
           "201": {
             description:
               "Payment created successfully",
+
             content: {
               "application/json": {
                 schema: {
@@ -591,6 +552,7 @@ const swaggerDocument = {
           "400": {
             description:
               "Invalid request",
+
             content: {
               "application/json": {
                 schema: {
@@ -604,6 +566,7 @@ const swaggerDocument = {
           "401": {
             description:
               "Authentication required",
+
             content: {
               "application/json": {
                 schema: {
@@ -617,6 +580,7 @@ const swaggerDocument = {
           "403": {
             description:
               "User does not have permission",
+
             content: {
               "application/json": {
                 schema: {
@@ -630,6 +594,7 @@ const swaggerDocument = {
           "404": {
             description:
               "Order not found",
+
             content: {
               "application/json": {
                 schema: {
@@ -643,6 +608,7 @@ const swaggerDocument = {
           "409": {
             description:
               "Order is not payable or a pending payment already exists",
+
             content: {
               "application/json": {
                 schema: {
@@ -656,172 +622,19 @@ const swaggerDocument = {
           "500": {
             description:
               "Payment gateway or internal server error",
-            content: {
-              "application/json": {
-                schema: {
-                  $ref:
-                    "#/components/schemas/ErrorResponse",
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-    "/api/v1/payment/callback/zarinpal": {
-      get: {
-        tags: ["Payment"],
-        summary: "Handle ZarinPal payment callback",
-        description:
-          "Receives the user's return from ZarinPal and triggers server-side payment verification. This endpoint does not require the application session cookie because the payment gateway redirects the user to it.",
-    
-        parameters: [
-          {
-            name: "paymentId",
-            in: "query",
-            required: true,
-            schema: {
-              type: "string",
-            },
-            example: "cmdef456xyz",
-            description:
-              "Internal payment ID created by the application.",
-          },
-        ],
-    
-        responses: {
-          "200": {
-            description:
-              "Payment verification result",
-            content: {
-              "application/json": {
-                schema: {
-                  $ref:
-                    "#/components/schemas/VerifyPaymentResponse",
-                },
-              },
-            },
-          },
-    
-          "400": {
-            description:
-              "Payment ID is missing or invalid",
-            content: {
-              "application/json": {
-                schema: {
-                  $ref:
-                    "#/components/schemas/ErrorResponse",
-                },
-              },
-            },
-          },
-    
-          "404": {
-            description:
-              "Payment not found",
-            content: {
-              "application/json": {
-                schema: {
-                  $ref:
-                    "#/components/schemas/ErrorResponse",
-                },
-              },
-            },
-          },
-    
-          "500": {
-            description:
-              "Payment gateway verification or internal server error",
-            content: {
-              "application/json": {
-                schema: {
-                  $ref:
-                    "#/components/schemas/ErrorResponse",
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-    
-    "/api/v1/payment/callback/zibal": {
-      get: {
-        tags: ["Payment"],
-        summary: "Handle Zibal payment callback",
-        description:
-          "Receives the user's return from Zibal and triggers server-side payment verification. This endpoint does not require the application session cookie because the payment gateway redirects the user to it.",
-    
-        parameters: [
-          {
-            name: "paymentId",
-            in: "query",
-            required: true,
-            schema: {
-              type: "string",
-            },
-            example: "cmdef456xyz",
-            description:
-              "Internal payment ID created by the application.",
-          },
-        ],
-    
-        responses: {
-          "200": {
-            description:
-              "Payment verification result",
-            content: {
-              "application/json": {
-                schema: {
-                  $ref:
-                    "#/components/schemas/VerifyPaymentResponse",
-                },
-              },
-            },
-          },
-    
-          "400": {
-            description:
-              "Payment ID is missing or invalid",
-            content: {
-              "application/json": {
-                schema: {
-                  $ref:
-                    "#/components/schemas/ErrorResponse",
-                },
-              },
-            },
-          },
-    
-          "404": {
-            description:
-              "Payment not found",
-            content: {
-              "application/json": {
-                schema: {
-                  $ref:
-                    "#/components/schemas/ErrorResponse",
-                },
-              },
-            },
-          },
-    
-          "500": {
-            description:
-              "Payment gateway verification or internal server error",
-            content: {
-              "application/json": {
-                schema: {
-                  $ref:
-                    "#/components/schemas/ErrorResponse",
-                },
-              },
-            },
-          },
-        },
-      },
-    },
 
+            content: {
+              "application/json": {
+                schema: {
+                  $ref:
+                    "#/components/schemas/ErrorResponse",
+                },
+              },
+            },
+          },
+        },
+      },
+    },
 
     "/api/v1/payment/verify": {
       post: {
@@ -857,6 +670,7 @@ const swaggerDocument = {
           "200": {
             description:
               "Payment verification result",
+
             content: {
               "application/json": {
                 schema: {
@@ -868,8 +682,10 @@ const swaggerDocument = {
                   success: {
                     summary:
                       "Payment verified successfully",
+
                     value: {
                       success: true,
+
                       data: {
                         success: true,
                         transactionId:
@@ -881,8 +697,10 @@ const swaggerDocument = {
                   failed: {
                     summary:
                       "Payment verification failed",
+
                     value: {
                       success: false,
+
                       data: {
                         success: false,
                       },
@@ -896,6 +714,7 @@ const swaggerDocument = {
           "400": {
             description:
               "Invalid request",
+
             content: {
               "application/json": {
                 schema: {
@@ -909,6 +728,7 @@ const swaggerDocument = {
           "401": {
             description:
               "Authentication required",
+
             content: {
               "application/json": {
                 schema: {
@@ -922,6 +742,7 @@ const swaggerDocument = {
           "403": {
             description:
               "User does not have permission",
+
             content: {
               "application/json": {
                 schema: {
@@ -935,6 +756,7 @@ const swaggerDocument = {
           "404": {
             description:
               "Payment not found",
+
             content: {
               "application/json": {
                 schema: {
@@ -948,6 +770,7 @@ const swaggerDocument = {
           "409": {
             description:
               "Payment is not verifiable",
+
             content: {
               "application/json": {
                 schema: {
@@ -960,7 +783,182 @@ const swaggerDocument = {
 
           "500": {
             description:
-              "Payment gateway verification error",
+              "Payment gateway verification or internal server error",
+
+            content: {
+              "application/json": {
+                schema: {
+                  $ref:
+                    "#/components/schemas/ErrorResponse",
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+
+    "/api/v1/payment/callback/zarinpal": {
+      get: {
+        tags: ["Payment"],
+        summary:
+          "Handle ZarinPal payment callback",
+
+        description:
+          "Receives the user's return from ZarinPal and triggers server-side payment verification. This endpoint does not require the application session cookie because the payment gateway redirects the user to it.",
+
+        parameters: [
+          {
+            name: "paymentId",
+            in: "query",
+            required: true,
+
+            schema: {
+              type: "string",
+            },
+
+            example:
+              "cmdef456xyz",
+
+            description:
+              "Internal payment ID created by the application.",
+          },
+        ],
+
+        responses: {
+          "200": {
+            description:
+              "Payment verification result",
+
+            content: {
+              "application/json": {
+                schema: {
+                  $ref:
+                    "#/components/schemas/VerifyPaymentResponse",
+                },
+              },
+            },
+          },
+
+          "400": {
+            description:
+              "Payment ID is missing or invalid",
+
+            content: {
+              "application/json": {
+                schema: {
+                  $ref:
+                    "#/components/schemas/ErrorResponse",
+                },
+              },
+            },
+          },
+
+          "404": {
+            description:
+              "Payment not found",
+
+            content: {
+              "application/json": {
+                schema: {
+                  $ref:
+                    "#/components/schemas/ErrorResponse",
+                },
+              },
+            },
+          },
+
+          "500": {
+            description:
+              "Payment gateway verification or internal server error",
+
+            content: {
+              "application/json": {
+                schema: {
+                  $ref:
+                    "#/components/schemas/ErrorResponse",
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+
+    "/api/v1/payment/callback/zibal": {
+      get: {
+        tags: ["Payment"],
+        summary:
+          "Handle Zibal payment callback",
+
+        description:
+          "Receives the user's return from Zibal and triggers server-side payment verification. This endpoint does not require the application session cookie because the payment gateway redirects the user to it.",
+
+        parameters: [
+          {
+            name: "paymentId",
+            in: "query",
+            required: true,
+
+            schema: {
+              type: "string",
+            },
+
+            example:
+              "cmdef456xyz",
+
+            description:
+              "Internal payment ID created by the application.",
+          },
+        ],
+
+        responses: {
+          "200": {
+            description:
+              "Payment verification result",
+
+            content: {
+              "application/json": {
+                schema: {
+                  $ref:
+                    "#/components/schemas/VerifyPaymentResponse",
+                },
+              },
+            },
+          },
+
+          "400": {
+            description:
+              "Payment ID is missing or invalid",
+
+            content: {
+              "application/json": {
+                schema: {
+                  $ref:
+                    "#/components/schemas/ErrorResponse",
+                },
+              },
+            },
+          },
+
+          "404": {
+            description:
+              "Payment not found",
+
+            content: {
+              "application/json": {
+                schema: {
+                  $ref:
+                    "#/components/schemas/ErrorResponse",
+                },
+              },
+            },
+          },
+
+          "500": {
+            description:
+              "Payment gateway verification or internal server error",
+
             content: {
               "application/json": {
                 schema: {
@@ -974,7 +972,6 @@ const swaggerDocument = {
       },
     },
   },
-  
 };
 
 export function setupSwagger(app: Express) {

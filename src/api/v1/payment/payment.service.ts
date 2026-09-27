@@ -17,6 +17,7 @@ import { PaymentRepository } from "./payment.repository";
 import { PaymentGatewayFactory } from "./gateways/payment.gateway.factory";
 
 import {
+  PaymentGatewayName,
   parsePaymentGatewayName,
 } from "./payment.types";
 
@@ -30,6 +31,9 @@ export class PaymentService {
     userId: string,
     input: CreatePaymentInput,
   ): Promise<CreatePaymentResult> {
+    const gatewayName =
+      parsePaymentGatewayName(input.gateway);
+
     const order =
       await this.paymentRepository.findOrderForPayment(
         input.orderId,
@@ -55,9 +59,8 @@ export class PaymentService {
       );
     }
 
-    const gateway = this.gatewayFactory.create(
-      input.gateway,
-    );
+    const gateway =
+      this.gatewayFactory.create(gatewayName);
 
     const payment =
       await this.paymentRepository.createPending({
@@ -65,8 +68,11 @@ export class PaymentService {
         orderId: order.id,
         invoiceId: order.invoice?.id,
         amount: Number(order.amount),
-        method: PaymentMethod.ZIBAL,
-        gateway: input.gateway,
+        method:
+          gatewayName === PaymentGatewayName.ZIBAL
+            ? PaymentMethod.ZIBAL
+            : PaymentMethod.OTHER,
+        gateway: gatewayName,
       });
 
     try {
@@ -136,9 +142,15 @@ export class PaymentService {
       );
     }
 
-    const gateway = this.gatewayFactory.create(
-      parsePaymentGatewayName(payment.gateway),
-    );
+    const gatewayName =
+      parsePaymentGatewayName(
+        payment.gateway,
+      );
+
+    const gateway =
+      this.gatewayFactory.create(
+        gatewayName,
+      );
 
     const result =
       await gateway.verifyPayment({
