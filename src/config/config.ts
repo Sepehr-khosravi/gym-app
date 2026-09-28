@@ -5,6 +5,7 @@ dotenv.config();
 interface Config {
   port: number;
   nodeEnv: string;
+  clubId: string;
 
   payment: {
     zarinpal: {
@@ -21,11 +22,11 @@ interface Config {
 }
 
 const config: Config = {
-  port:
-    Number(process.env.PORT) || 8080,
+  port: Number(process.env.PORT) || 8080,
 
-  nodeEnv:
-    process.env.NODE_ENV || "development",
+  nodeEnv: process.env.NODE_ENV || "development",
+
+  clubId: process.env.CLUB_ID ?? "",
 
   payment: {
     zarinpal: {

@@ -31,14 +31,12 @@ export class PaymentService {
     userId: string,
     input: CreatePaymentInput,
   ): Promise<CreatePaymentResult> {
-    const gatewayName =
-      parsePaymentGatewayName(input.gateway);
+    const gatewayName = parsePaymentGatewayName(input.gateway);
 
-    const order =
-      await this.paymentRepository.findOrderForPayment(
-        input.orderId,
-        userId,
-      );
+    const order = await this.paymentRepository.findOrderForPayment(
+      input.orderId,
+      userId,
+    );
 
     if (!order) {
       throw new Error("Order not found");
@@ -49,40 +47,34 @@ export class PaymentService {
     }
 
     const existingPayment =
-      await this.paymentRepository.findPendingByOrderId(
-        order.id,
-      );
+      await this.paymentRepository.findPendingByOrderId(order.id);
 
     if (existingPayment) {
-      throw new Error(
-        "Payment already exists for this order",
-      );
+      throw new Error("Payment already exists for this order");
     }
 
-    const gateway =
-      this.gatewayFactory.create(gatewayName);
+    const gateway = this.gatewayFactory.create(gatewayName);
 
-    const payment =
-      await this.paymentRepository.createPending({
-        userId,
-        orderId: order.id,
-        invoiceId: order.invoice?.id,
-        amount: Number(order.amount),
-        method:
-          gatewayName === PaymentGatewayName.ZIBAL
-            ? PaymentMethod.ZIBAL
-            : PaymentMethod.OTHER,
-        gateway: gatewayName,
-      });
+    const method =
+      gatewayName === PaymentGatewayName.ZIBAL
+        ? PaymentMethod.ZIBAL
+        : PaymentMethod.ZARINPAL;
+
+    const payment = await this.paymentRepository.createPending({
+      userId,
+      orderId: order.id,
+      invoiceId: order.invoice?.id,
+      amount: Number(order.amount),
+      method,
+      gateway: gatewayName,
+    });
 
     try {
-      const result =
-        await gateway.createPayment({
-          paymentId: payment.id,
-          amount: Number(order.amount),
-          callbackUrl:
-            gateway.getCallbackUrl(payment.id),
-        });
+      const result = await gateway.createPayment({
+        paymentId: payment.id,
+        amount: Number(order.amount),
+        callbackUrl: gateway.getCallbackUrl(payment.id),
+      });
 
       const authorityResult =
         await this.paymentRepository.setAuthority(
@@ -102,10 +94,7 @@ export class PaymentService {
         authority: result.authority,
       };
     } catch (error) {
-      await this.paymentRepository.markFailed(
-        payment.id,
-      );
-
+      await this.paymentRepository.markFailed(payment.id);
       throw error;
     }
   }
@@ -113,27 +102,24 @@ export class PaymentService {
   async verifyPayment(
     input: VerifyPaymentInput,
   ): Promise<VerifyPaymentResult> {
-    const payment =
-      await this.paymentRepository.findById(
-        input.paymentId,
-      );
+    const payment = await this.paymentRepository.findById(
+      input.paymentId,
+    );
 
     if (!payment) {
       throw new Error("Payment not found");
     }
 
+    // Idempotent callback / verification
     if (payment.status === PaymentStatus.SUCCESS) {
       return {
         success: true,
-        transactionId:
-          payment.transactionId ?? undefined,
+        transactionId: payment.transactionId ?? undefined,
       };
     }
 
     if (payment.status !== PaymentStatus.PENDING) {
-      throw new Error(
-        "Payment is not verifiable",
-      );
+      throw new Error("Payment is not verifiable");
     }
 
     if (!payment.gateway || !payment.authority) {
@@ -142,26 +128,19 @@ export class PaymentService {
       );
     }
 
-    const gatewayName =
-      parsePaymentGatewayName(
-        payment.gateway,
-      );
+    const gatewayName = parsePaymentGatewayName(
+      payment.gateway,
+    );
 
-    const gateway =
-      this.gatewayFactory.create(
-        gatewayName,
-      );
+    const gateway = this.gatewayFactory.create(gatewayName);
 
-    const result =
-      await gateway.verifyPayment({
-        authority: payment.authority,
-        amount: Number(payment.amount),
-      });
+    const result = await gateway.verifyPayment({
+      authority: payment.authority,
+      amount: Number(payment.amount),
+    });
 
     if (!result.success) {
-      await this.paymentRepository.markFailed(
-        payment.id,
-      );
+      await this.paymentRepository.markFailed(payment.id);
 
       return {
         success: false,
@@ -169,30 +148,26 @@ export class PaymentService {
     }
 
     if (!result.transactionId) {
-      await this.paymentRepository.markFailed(
-        payment.id,
-      );
+      await this.paymentRepository.markFailed(payment.id);
 
       throw new Error(
         "Payment verification succeeded but transaction ID is missing",
       );
     }
 
-    const updated =
-      await this.paymentRepository.markSuccess(
+    const updated = await this.paymentRepository.markSuccess(
+      payment.id,
+      result.transactionId,
+    );
+
+    // Another callback may have completed the payment
+    // between findById() and markSuccess().
+    if (!updated) {
+      const current = await this.paymentRepository.findById(
         payment.id,
-        result.transactionId,
       );
 
-    if (!updated) {
-      const current =
-        await this.paymentRepository.findById(
-          payment.id,
-        );
-
-      if (
-        current?.status === PaymentStatus.SUCCESS
-      ) {
+      if (current?.status === PaymentStatus.SUCCESS) {
         return {
           success: true,
           transactionId:

@@ -29,29 +29,19 @@ export class AuthRepository {
     });
   }
 
-  async createUser(
-    input: CreateUserInput,
-  ) {
+  async createUser(input: CreateUserInput) {
     return this.prisma.user.create({
       data: {
         clubId: input.clubId,
-
         phone: input.phone,
-
-        firstName: input.firstName,
-        lastName: input.lastName,
-        nationalId: input.nationalId,
-        birthDate: input.birthDate,
-
-        // A newly registered user is not
-        // verified until the payment succeeds.
+        firstName: input.firstName ?? null,
+        lastName: input.lastName ?? null,
+        nationalId: input.nationalId ?? null,
+        birthDate: input.birthDate ?? null,
         isVerified: false,
-
-        // RegistrationService will provide
-        // the temporary expiration time.
         verificationExpiresAt:
           input.verificationExpiresAt,
-
+  
         roles: {
           create: {
             role: {
@@ -62,7 +52,7 @@ export class AuthRepository {
           },
         },
       },
-
+  
       include: {
         roles: {
           include: {
@@ -72,7 +62,6 @@ export class AuthRepository {
       },
     });
   }
-
   async markUserAsVerified(
     userId: string,
   ) {
