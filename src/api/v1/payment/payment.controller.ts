@@ -9,10 +9,12 @@ import {
 } from "./payment.schemas";
 
 import type { PaymentService } from "./payment.service";
+import type { RegistrationService } from "../registration/registration.service";
 
 export class PaymentController {
   constructor(
     private readonly paymentService: PaymentService,
+    private readonly registrationService: RegistrationService,
   ) {}
 
   async createPayment(
@@ -20,16 +22,16 @@ export class PaymentController {
     res: Response,
   ) {
     const input =
-      createPaymentSchema.parse(
-        req.body,
-      );
+      createPaymentSchema.parse(req.body);
 
     const userId =
-      (req as Request & {
-        user: {
-          id: string;
-        };
-      }).user.id;
+      (
+        req as Request & {
+          user: {
+            id: string;
+          };
+        }
+      ).user.id;
 
     const result =
       await this.paymentService.createPayment(
@@ -48,14 +50,18 @@ export class PaymentController {
     res: Response,
   ) {
     const input =
-      verifyPaymentSchema.parse(
-        req.body,
-      );
+      verifyPaymentSchema.parse(req.body);
 
     const result =
       await this.paymentService.verifyPayment(
         input,
       );
+
+    if (result.success) {
+      await this.registrationService.finalizePayment(
+        input.paymentId,
+      );
+    }
 
     return res.status(200).json({
       success: result.success,
@@ -75,8 +81,7 @@ export class PaymentController {
     if (!paymentId) {
       return res.status(400).json({
         success: false,
-        message:
-          "Payment ID is required",
+        message: "Payment ID is required",
       });
     }
 
@@ -84,6 +89,12 @@ export class PaymentController {
       await this.paymentService.verifyPayment({
         paymentId,
       });
+
+    if (result.success) {
+      await this.registrationService.finalizePayment(
+        paymentId,
+      );
+    }
 
     return res.status(200).json({
       success: result.success,
@@ -103,8 +114,7 @@ export class PaymentController {
     if (!paymentId) {
       return res.status(400).json({
         success: false,
-        message:
-          "Payment ID is required",
+        message: "Payment ID is required",
       });
     }
 
@@ -112,6 +122,12 @@ export class PaymentController {
       await this.paymentService.verifyPayment({
         paymentId,
       });
+
+    if (result.success) {
+      await this.registrationService.finalizePayment(
+        paymentId,
+      );
+    }
 
     return res.status(200).json({
       success: result.success,

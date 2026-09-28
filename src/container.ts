@@ -5,10 +5,6 @@ import { AuthRepository } from "./api/v1/auth/auth.repository";
 import { AuthService } from "./api/v1/auth/auth.service";
 import { AuthController } from "./api/v1/auth/auth.controller";
 
-// OTP
-import { OtpService } from "./services/otp/otp.service";
-import type { OtpProvider } from "./services/otp/otp.provider";
-
 // Payment
 import { PaymentRepository } from "./api/v1/payment/payment.repository";
 import { PaymentService } from "./api/v1/payment/payment.service";
@@ -19,44 +15,45 @@ import { PaymentGatewayFactory } from "./api/v1/payment/gateways/payment.gateway
 import { ZarinpalGateway } from "./api/v1/payment/gateways/zarinpal.gateway";
 import { ZibalGateway } from "./api/v1/payment/gateways/zibal.gateway";
 
+// Registration
+import { RegistrationRepository } from "./api/v1/registration/registration.repository";
+import { RegistrationService } from "./api/v1/registration/registration.service";
+import { RegistrationController } from "./api/v1/registration/registration.controller";
+
+// OTP
+import { OtpService } from "./services/otp/otp.service";
+import type { OtpProvider } from "./services/otp/otp.provider";
+
 export function createContainer(
   prisma: PrismaClient,
   otpProvider: OtpProvider,
 ) {
-  /*
-   * =========================
-   * OTP
-   * =========================
-   */
+  // ─────────────────────────────────────────────
+  // OTP
+  // ─────────────────────────────────────────────
 
   const otpService = new OtpService(
     otpProvider,
   );
 
-  /*
-   * =========================
-   * Auth
-   * =========================
-   */
+  // ─────────────────────────────────────────────
+  // AUTH
+  // ─────────────────────────────────────────────
 
-  const authRepository = new AuthRepository(
-    prisma,
-  );
+  const authRepository =
+    new AuthRepository(prisma);
 
   const authService = new AuthService(
     authRepository,
     otpService,
   );
 
-  const authController = new AuthController(
-    authService,
-  );
+  const authController =
+    new AuthController(authService);
 
-  /*
-   * =========================
-   * Payment
-   * =========================
-   */
+  // ─────────────────────────────────────────────
+  // PAYMENT
+  // ─────────────────────────────────────────────
 
   const paymentRepository =
     new PaymentRepository(prisma);
@@ -79,31 +76,51 @@ export function createContainer(
       paymentGatewayFactory,
     );
 
-  const paymentController =
-    new PaymentController(paymentService);
+  // ─────────────────────────────────────────────
+  // REGISTRATION
+  // ─────────────────────────────────────────────
 
-  /*
-   * =========================
-   * Container
-   * =========================
-   */
+  const registrationRepository =
+    new RegistrationRepository(prisma);
+
+  const registrationService =
+    new RegistrationService(
+      registrationRepository,
+      paymentService,
+    );
+
+  const registrationController =
+    new RegistrationController(
+      registrationService,
+    );
+
+  // ─────────────────────────────────────────────
+  // PAYMENT CONTROLLER
+  // ─────────────────────────────────────────────
+
+  const paymentController =
+    new PaymentController(
+      paymentService,
+      registrationService,
+    );
 
   return {
-    // OTP
     otpService,
 
-    // Auth
     authRepository,
     authService,
     authController,
 
-    // Payment
     paymentRepository,
     zarinpalGateway,
     zibalGateway,
     paymentGatewayFactory,
     paymentService,
     paymentController,
+
+    registrationRepository,
+    registrationService,
+    registrationController,
   };
 }
 

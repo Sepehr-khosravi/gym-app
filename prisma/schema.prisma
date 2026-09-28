@@ -52,6 +52,7 @@ enum PaymentStatus {
 
 enum PaymentMethod {
   ZIBAL
+  ZARINPAL
   CASH
   POS
   CARD_TO_CARD
@@ -113,8 +114,6 @@ model Club {
   scheduleExceptions ScheduleException[]
   accessCredentials  AccessCredential[]
   accessLogs         AccessLog[]
-
-  @@index([name])
 }
 
 // ─────────────────────────────────────────────
@@ -126,18 +125,20 @@ model User {
 
   clubId String
 
-  firstName String
-  lastName  String
+  // Nullable because a temporary registration
+  // does not have profile information yet.
+  firstName String?
+  lastName  String?
 
   isVerified Boolean @default(false)
 
-  // Used only while a new registration is waiting
+  // Used while a new registration is waiting
   // for its payment to be completed.
   verificationExpiresAt DateTime?
 
-  phone      String   @unique
-  nationalId String   @unique
-  birthDate  DateTime
+  phone      String    @unique
+  nationalId String?   @unique
+  birthDate  DateTime?
 
   email String?
 
@@ -163,6 +164,8 @@ model User {
   credentials AccessCredential[]
 
   sessions Session[]
+
+  registrations Registration[]
 
   @@index([clubId])
   @@index([clubId, status])
@@ -191,6 +194,7 @@ model UserRole {
   roleId String
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   assignedAt DateTime @default(now())
@@ -247,7 +251,8 @@ model Membership {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user User           @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
   plan MembershipPlan @relation(fields: [planId], references: [id])
 
   invoices Invoice[]
@@ -280,7 +285,8 @@ model Order {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user User           @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
   plan MembershipPlan @relation(fields: [planId], references: [id])
 
   invoice  Invoice?
@@ -310,8 +316,10 @@ model Invoice {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user       User        @relation(fields: [userId], references: [id])
-  order      Order?      @relation(fields: [orderId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  order Order? @relation(fields: [orderId], references: [id])
+
   membership Membership? @relation(fields: [membershipId], references: [id])
 
   payments Payment[]
@@ -349,8 +357,10 @@ model Payment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user    User     @relation(fields: [userId], references: [id])
-  order   Order    @relation(fields: [orderId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  order Order @relation(fields: [orderId], references: [id])
+
   invoice Invoice? @relation(fields: [invoiceId], references: [id])
 
   @@index([userId])
@@ -383,6 +393,7 @@ model AccessCredential {
   updatedAt DateTime @updatedAt
 
   club Club @relation(fields: [clubId], references: [id])
+
   user User @relation(fields: [userId], references: [id])
 
   accessLogs AccessLog[]
@@ -410,7 +421,8 @@ model AccessLog {
 
   createdAt DateTime @default(now())
 
-  club       Club             @relation(fields: [clubId], references: [id])
+  club Club @relation(fields: [clubId], references: [id])
+
   credential AccessCredential @relation(fields: [credentialId], references: [id])
 
   @@index([clubId, createdAt])
@@ -481,5 +493,32 @@ model Session {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([expiresAt])
+}
+
+// ─────────────────────────────────────────────
+// REGISTRATION
+// ─────────────────────────────────────────────
+
+model Registration {
+  id String @id @default(cuid())
+
+  userId String @unique
+
+  // SHA-256 hash of the temporary registration token.
+  // The raw token is never stored in the database.
+  tokenHash String @unique
+
+  // Registration is valid only until this time.
+  expiresAt DateTime
+
+  // Set after successful payment and finalization.
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([expiresAt])
 }
